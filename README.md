@@ -1,4 +1,4 @@
-# Универсальный бот - библиотека и человек
+# Бот определения маршрутов личностного развития МИЦ
 
 [Пример таблицы - только на чтение](https://docs.google.com/spreadsheets/d/1dkpFEvOqWvVM_cJAnKvaQ0Ne8MmGPjy33cvPeeSwi-o/edit?usp=sharing)
 
@@ -12,9 +12,9 @@
 
 ## Сборка и запуск Docker контейнера
 
-`docker build -t twobrowin/spreadsheet-bot:latest .`
+`docker build -t twobrowin/mic-self-development-routes-bot:latest .`
 
-`docker push twobrowin/spreadsheet-bot:latest`
+`docker push twobrowin/mic-self-development-routes-bot:latest`
 
 `ansible-playbook playbook.yaml -i hosts.ini`
 
