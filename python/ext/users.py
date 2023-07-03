@@ -3,6 +3,16 @@ from spreadsheetbot.sheets.users import UsersAdapterClass
 import asyncio
 from gspread import utils
 import numpy as np
+import json
+from io import BytesIO
+
+from cycler import cycler
+import matplotlib.pyplot as plt
+
+plt.style.use("Solarize_Light2")
+plt.rcParams["axes.prop_cycle"] = plt.rcParams["axes.prop_cycle"].concat(cycler('color', ['#cfa091']))
+def pie_chart_fmt(x):
+    return '{:.1f}%'.format(x)
 
 from spreadsheetbot import (
     I18n,
@@ -111,25 +121,36 @@ async def proceed_registration_handler(self, update: Update, context: ContextTyp
     
     if last_state:
         await asyncio.sleep(1)
-        main_track_title, main_track, _, sub_track = await self.pre_load_tracks(uid)
-        await update.message.reply_markdown(Settings.registration_complete)
+        main_track_title, main_track, _, sub_track, pie_chart = await self.pre_load_tracks(uid)
+        
+        fig,ax = plt.subplots(figsize=(9, 6), dpi=150)
+        pie_chart_data = json.loads(pie_chart)
+        ax.pie(**pie_chart_data, autopct=pie_chart_fmt)
+        buffer = BytesIO()
+        fig.savefig(buffer, format='png')
+        buffer.seek(0)
+        await update.message.reply_photo(buffer, caption = Settings.registration_complete, parse_mode=ParseMode.MARKDOWN)
+        buffer.close()
+
         await update.message.reply_markdown(main_track)
         await update.message.reply_markdown(sub_track, reply_markup=Keyboard.get_reply_keyboard(main_track_title, I18n.track_state_main))
 UsersAdapterClass.proceed_registration_handler = proceed_registration_handler
 
-async def pre_load_tracks(self, uid: int|str) -> tuple[str,str,str,str]:
-    main_track_title, main_track, sub_track_title, sub_track = np.array(await self.wks.batch_get([
+async def pre_load_tracks(self, uid: int|str) -> tuple[str,str,str,str,str]:
+    main_track_title, main_track, sub_track_title, sub_track, pie_chart = np.array(await self.wks.batch_get([
         utils.rowcol_to_a1(self.wks_row(uid), Settings.user_main_track_title_collumn_num),
         utils.rowcol_to_a1(self.wks_row(uid), Settings.user_main_track_collumn_num),
         utils.rowcol_to_a1(self.wks_row(uid), Settings.user_sub_track_title_collumn_num),
         utils.rowcol_to_a1(self.wks_row(uid), Settings.user_sub_track_collumn_num),
+        utils.rowcol_to_a1(self.wks_row(uid), Settings.user_pie_chart_collumn_num),
     ])).flatten()
     Log.info(f"Got track for user with {uid=}: {main_track_title=} and {sub_track_title=}")
     self.as_df.loc[self.selector(uid), 'main_track_title'] = main_track_title
     self.as_df.loc[self.selector(uid), 'main_track']       = main_track
     self.as_df.loc[self.selector(uid), 'sub_track_title']  = sub_track_title
     self.as_df.loc[self.selector(uid), 'sub_track']        = sub_track
-    return main_track_title, main_track, sub_track_title, sub_track
+    self.as_df.loc[self.selector(uid), 'pie_chart']        = pie_chart
+    return main_track_title, main_track, sub_track_title, sub_track, pie_chart
 UsersAdapterClass.pre_load_tracks = pre_load_tracks
 
 async def restart_help_on_registration_complete_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
